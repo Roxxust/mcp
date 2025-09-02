@@ -1,0 +1,26 @@
+[package]
+name = "mcp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rmcp = { version = "0.3.2", features = ["tower", "transport-io", "transport-sse-server", "macros", "server", "schemars"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+dotenv = "0.15"
+
+#get_time:
+chrono = "0.4"
+chrono-tz = "0.6"
+
+#query_rustdocs:
+crates_io_api = "0.8"
+reqwest = { version = "0.12", features = ["json", "blocking", "gzip"] }
+scraper = "0.19"
+
+#internet_lookup:
+urlencoding = "2.1"
+
+
+#project_context_explorer:
+glob = "0.3"
