@@ -4,7 +4,7 @@ create a new tool in /tools and add the router block/line in main.rs and mod.rs 
 tool args are defined in the code.<br/>
 sloppy/simple approach but seems to work..<br/>
 
-*replace **insertnamehere** in the path with yours in the [**mcp.json**](https://github.com/Roxxust/mcp/blob/main/mcp.json%20for%20lm%20studio) for lm studio(needs to be double slashed)* <br/>
+*replace **insertuserhere** in the path with yours in the [**mcp.json**](https://github.com/Roxxust/mcp/blob/main/mcp.json%20for%20lm%20studio) for lm studio(needs to be double slashed)* <br/>
 
 .exe doesn't need to be running, just needs to exist at the path.<br/>
 
