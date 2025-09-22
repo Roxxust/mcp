@@ -53,15 +53,6 @@ impl MCPHandler {
     ) -> Result<CallToolResult, ErrorData> {
         tools::query_rustdocs::query_rustdocs(args).await
     }
-    #[tool(name = "internet_lookup", description = "Echo parameter back")]
-    async fn internet_lookup(
-        &self,
-        args: rmcp::handler::server::tool::Parameters<
-            tools::internet_lookup::InternetLookupArgs
-        >,
-    ) -> Result<CallToolResult, ErrorData> {
-        tools::internet_lookup::internet_lookup(args).await
-    }
 }
 
 #[tool_handler]
