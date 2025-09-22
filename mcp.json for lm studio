@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "rust-mcp-server": {
+      "command": "C:\\Users\\insertuserhere\\source\\repos\\mcp\\target\\debug\\mcp.exe",
+      "args": []
+    }
+  }
+}
