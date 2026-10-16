@@ -1,19 +1,17 @@
+// src/main.rs
+//
+// MCP Server entry point — RMCP 3.5.1
+// Transport: stdio (with optional SSH tunneling via client config)
+// Registration: Zero-duplication macro pattern
+
 use dotenv::dotenv;
 use rmcp::{
-    ServerHandler, ServiceExt,
-    tool_router, tool_handler, tool,
+    ServerHandler, ServiceExt, tool_handler,
     handler::server::tool::ToolRouter,
-    model::{
-        ServerInfo, ServerCapabilities, ProtocolVersion, Implementation,
-        InitializeResult, InitializeRequestParam,
-        ListResourcesResult, ReadResourceResult, ReadResourceRequestParam,
-        ListPromptsResult, GetPromptResult, GetPromptRequestParam,
-        ListResourceTemplatesResult, PaginatedRequestParam,
-        CallToolResult,
-    },
-    transport::stdio, ErrorData,
+    model::{ServerConfig, ServerCapabilities, Implementation},
+    transport::stdio,
 };
-use std::future::Future;
+
 mod tools;
 
 #[derive(Clone)]
@@ -21,123 +19,81 @@ pub struct MCPHandler {
     tool_router: ToolRouter<Self>,
 }
 
-#[tool_router]
+// ============================================================================
+// ZERO-DUPLICATION TOOL REGISTRATION
+// ============================================================================
+// This macro registers standalone tool functions from src/tools/.
+// The #[tool] macro on each function generates a companion `<name>_tool_attr()`
+// function containing the tool's metadata (name, description, schema, annotations).
+//
+// TO ADD A NEW TOOL: append `, new_tool_name` to the invocation below.
+// The tool's definition (name, description, annotations, schema) is pulled
+// directly from the tool file — nothing is duplicated here.
+macro_rules! register_tools {
+    ($router:ident, $($mod:ident),* $(,)?) => {
+        $(
+            rmcp::paste! {
+                $router = $router.with_route((
+                    tools::$mod::[<$mod _tool_attr>](),
+                    tools::$mod::$mod
+                ));
+            }
+        )*
+    };
+}
+
 impl MCPHandler {
     pub fn new() -> Self {
-        Self { tool_router: Self::tool_router() }
-    }
+        let mut router = ToolRouter::new();
 
-    #[tool(name = "get_time", description = "Current timestamp in ms")]
-    async fn get_time(
-        &self,
-        args: rmcp::handler::server::tool::Parameters<tools::get_time::GetTimeArgs>,
-    ) -> Result<CallToolResult, ErrorData> {
-        tools::get_time::get_time(args).await
-    }
+        // ─── REGISTER TOOLS HERE ───────────────────────────────────────
+        // Add new tools by appending: , tool_name
+        register_tools!(router, get_time, boilerplate_example);
+        // ────────────────────────────────────────────────────────────────
 
-    #[tool(name = "boilerplate_example", description = "Echo parameter back")]
-    async fn boilerplate_example(
-        &self,
-        args: rmcp::handler::server::tool::Parameters<
-            tools::boilerplate_example::BoilerplateArgs
-        >,
-    ) -> Result<CallToolResult, ErrorData> {
-        tools::boilerplate_example::boilerplate_example(args).await
-    }
-    #[tool(name = "query_rustdocs", description = "figure out the crate to use based off the user's inquiry, then lookup the crates you intend to use and scrape the latest version and documentation, then use the updated crate version's documentation to write the code. do this for all crates you intend to use in the project.")]
-    async fn query_rustdocs(
-        &self,
-        args: rmcp::handler::server::tool::Parameters<
-            tools::query_rustdocs::QueryRustDocsArgs
-        >,
-    ) -> Result<CallToolResult, ErrorData> {
-        tools::query_rustdocs::query_rustdocs(args).await
+        Self { tool_router: router }
     }
 }
 
-#[tool_handler]
+// ============================================================================
+// SERVER HANDLER
+// ============================================================================
+// #[tool_handler] wires the tool_router into the ServerHandler trait.
+// The trait provides default implementations for all standard MCP methods
+// (initialize, list_resources, read_resource, list_prompts, etc.).
+// We only need to implement get_info() to declare our capabilities.
+#[tool_handler(router = self.tool_router)]
 impl ServerHandler for MCPHandler {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            protocol_version: ProtocolVersion::V_2024_11_05,
-            capabilities: ServerCapabilities::builder()
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(
+            ServerCapabilities::builder()
                 .enable_tools()
                 .build(),
-            server_info: Implementation {
-                name: "mcp-server".into(),
-                version: "0.1.0".into(),
-            },
-            instructions: Some("Tools: get_time, boilerplate_example".into()),
-        }
-    }
-
-    async fn initialize(
-        &self,
-        _param: InitializeRequestParam,
-        _ctx: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<InitializeResult, ErrorData> {
-        Ok(InitializeResult {
-            protocol_version: ProtocolVersion::V_2024_11_05,
-            capabilities: ServerCapabilities::builder()
-                .enable_tools()
-                .build(),
-            server_info: Implementation {
-                name: "mcp-server".into(),
-                version: "0.1.0".into(),
-            },
-            instructions: Some("Use tools via JSON-RPC".into()),
-        })
-    }
-
-    async fn list_resources(
-        &self,
-        _req: Option<PaginatedRequestParam>,
-        _ctx: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<ListResourcesResult, ErrorData> {
-        Ok(ListResourcesResult { resources: vec![], next_cursor: None })
-    }
-
-    async fn read_resource(
-        &self,
-        _req: ReadResourceRequestParam,
-        _ctx: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<ReadResourceResult, ErrorData> {
-        Err(ErrorData::resource_not_found("Not found", None))
-    }
-
-    async fn list_prompts(
-        &self,
-        _req: Option<PaginatedRequestParam>,
-        _ctx: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<ListPromptsResult, ErrorData> {
-        Ok(ListPromptsResult { prompts: vec![], next_cursor: None })
-    }
-
-    async fn get_prompt(
-        &self,
-        _req: GetPromptRequestParam,
-        _ctx: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<GetPromptResult, ErrorData> {
-        Err(ErrorData::invalid_params("Not found", None))
-    }
-
-    async fn list_resource_templates(
-        &self,
-        _req: Option<PaginatedRequestParam>,
-        _ctx: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<ListResourceTemplatesResult, ErrorData> {
-        Ok(ListResourceTemplatesResult {
-            resource_templates: vec![],
-            next_cursor: None,
-        })
+        )
+        .with_server_info(Implementation::new("mcp-server", "0.1.0"))
+        .with_instructions(
+            "MCP server exposing tools via JSON-RPC over stdio. \
+             Available tools: get_time, boilerplate_example.",
+        )
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
+
+    // Optional SSH mode flag.
+    // In practice, MCP over SSH is configured in the client's mcp.json:
+    //   { "command": "ssh", "args": ["user@host", "/path/to/mcp-server"] }
+    // The server itself always uses stdio — SSH just tunnels it.
+    let args: Vec<String> = std::env::args().collect();
+    if args.contains(&"--ssh".to_string()) {
+        eprintln!("[mcp-server] SSH mode flag detected. Ensure your mcp.json uses 'ssh' as the command.");
+    }
+
     let service = MCPHandler::new().serve(stdio()).await?;
-    eprintln!("MCP server running on stdio…");
+    eprintln!("[mcp-server] Running on stdio. Waiting for client connection…");
     service.waiting().await?;
+
     Ok(())
 }
