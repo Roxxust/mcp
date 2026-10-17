@@ -85,9 +85,9 @@ cargo run
 
 ## Adding a New Tool
 
-**Three steps. That's it.**
+### 1. Add dependencies to cargo.toml
 
-### 1. Create `src/tools/my_tool.rs`
+### 2. Create `src/tools/my_tool.rs`
 `boilerplate_example.rs`:
 
 ```rust
@@ -145,13 +145,13 @@ pub async fn boilerplate_example(
     Ok(CallToolResult::success(vec![ContentBlock::text(output)]))
 }
 ```
-### 2. Register in [`src/tools/mod.rs`](https://github.com/Roxxust/mcp/blob/96ec4412cdba3d09d71fba690566e2be5d14eeea/src/tools/mod.rs)
+### 3. Register in [`src/tools/mod.rs`](https://github.com/Roxxust/mcp/blob/96ec4412cdba3d09d71fba690566e2be5d14eeea/src/tools/mod.rs)
 
 ```rust
 pub mod my_tool;
 ```
 
-### 3. Add to the macro in [`src/main.rs`](https://github.com/Roxxust/mcp/blob/96ec4412cdba3d09d71fba690566e2be5d14eeea/src/main.rs#L51)
+### 4. Add to the macro in [`src/main.rs`](https://github.com/Roxxust/mcp/blob/96ec4412cdba3d09d71fba690566e2be5d14eeea/src/main.rs#L51)
 
 ```rust
 register_tools!(router, get_time, boilerplate_example, my_tool);
